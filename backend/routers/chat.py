@@ -149,6 +149,15 @@ async def analyze_text_endpoint(req: TextAnalysisRequest):
 async def generate_chat_response(req: ChatRequest):
     """Generates an empathetic AI sister response using Gemini AI or contextual fallback."""
     is_crisis = detect_crisis(req.message)
+    
+    # Auto-extract mood if not provided
+    sentiment = req.sentiment_label
+    emotion = req.emotion_label
+    if not sentiment or not emotion:
+        quick_analysis = analyze_text_lexicon(req.message, req.language)
+        sentiment = sentiment or quick_analysis.get("sentiment", {}).get("label")
+        emotion = emotion or quick_analysis.get("emotions", [{}])[0].get("label")
+
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
 
     # If Gemini API Key is available, call Google Gemini
@@ -206,16 +215,16 @@ async def generate_chat_response(req: ChatRequest):
             )
     else:
         if req.language == "hi":
-            if req.sentiment_label == "positive":
+            if sentiment == "positive":
                 reply = "यह सुनकर मेरी जान में जान आई 😊 तुम्हें थोड़ा मुस्कुराते देख मुझे बहुत सुकून मिलता है। आज खाना ठीक से खाया तुमने?"
-            elif req.sentiment_label == "negative" or req.emotion_label in ["fear", "anxiety", "distress"]:
+            elif sentiment == "negative" or emotion in ["fear", "anxiety", "distress"]:
                 reply = "मेरी प्यारी बहना, गहरी सांस लो और एक घूंट पानी पियो। मैं तुम्हारी हर बात सुन रही हूँ, दिल छोटा मत करो। क्या हुआ, मुझे बताओ?"
             else:
                 reply = "अपनी दीदी से बात करने के लिए धन्यवाद। आज तुम्हारा दिन कैसा बीता? क्या नींद ठीक से आई?"
         else:
-            if req.sentiment_label == "positive":
+            if sentiment == "positive":
                 reply = "That brings such relief to my heart 😊 Seeing you feel a little lighter makes my day. Have you eaten well today?"
-            elif req.sentiment_label == "negative" or req.emotion_label in ["fear", "anxiety", "distress"]:
+            elif sentiment == "negative" or emotion in ["fear", "anxiety", "distress"]:
                 reply = "Take a slow, deep breath, sweetheart. Your Didi is right here listening. You don't have to hold this in — tell me what happened, okay?"
             else:
                 reply = "Thank you for sharing that with me. How did your day go today? Were you able to get some rest?"
