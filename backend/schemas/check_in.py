@@ -13,6 +13,7 @@ class CheckInCreate(BaseModel):
     distress_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Standalone check-in distress score if known")
     engagement_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Engagement level (0 to 1)")
     raw_text: Optional[str] = Field(default=None, description="Raw text from user response if available")
+    text_content: Optional[str] = Field(default=None, description="Alias for raw text from frontend")
     timestamp: Optional[datetime] = None
 
 

@@ -308,36 +308,61 @@ export default function VictimDetail() {
         )}
       </div>
 
-      {/* Recent Check-Ins Table */}
+      {/* Recent Check-Ins & Conversations Table */}
       <div className="p-6 rounded-3xl bg-white border border-slate-100 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-slate-400" />
-          Recent Check-Ins
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-slate-400" />
+            Recent Check-Ins & Chatbot Conversations
+          </h2>
+          <button
+            onClick={() => navigate(`/chatbot?vic=${victim.id}`)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#0F4C3A] text-xs font-bold border border-emerald-200 transition cursor-pointer"
+          >
+            <span>🌸 Chat as {victim.id}</span>
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="text-slate-400 border-b border-slate-100 uppercase tracking-wider font-semibold">
-                {['Date', 'Channel', 'Sentiment', 'Emotion', 'Distress Score', 'Engagement'].map((h) => (
+                {['Date', 'Channel', 'Transcript / Message', 'Sentiment', 'Emotion', 'Distress Score', 'Engagement'].map((h) => (
                   <th key={h} className="py-3 px-3">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {checkIns.slice(0, 10).map((ci) => (
-                <tr key={ci.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 px-3 text-slate-500 font-medium">{ci.timestamp ? format(parseISO(ci.timestamp), 'dd MMM HH:mm') : '—'}</td>
-                  <td className="py-3 px-3 capitalize font-bold text-slate-800">{ci.channel}</td>
-                  <td className="py-3 px-3">
-                    <span className={`font-bold ${ci.sentiment_score < -0.2 ? 'text-rose-600' : ci.sentiment_score > 0.2 ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {ci.sentiment_score?.toFixed(2) ?? '—'}
-                    </span>
+              {checkIns.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
+                    No check-ins recorded yet for this case.
                   </td>
-                  <td className="py-3 px-3 text-slate-700 capitalize font-medium">{ci.emotion_label || '—'}</td>
-                  <td className="py-3 px-3"><DistressScore score={ci.distress_score ?? 0} /></td>
-                  <td className="py-3 px-3 text-slate-600 font-medium">{ci.engagement_score != null ? `${(ci.engagement_score * 100).toFixed(0)}%` : '—'}</td>
                 </tr>
-              ))}
+              ) : (
+                checkIns.slice(0, 15).map((ci) => (
+                  <tr key={ci.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 px-3 text-slate-500 font-medium whitespace-nowrap">{ci.timestamp ? format(parseISO(ci.timestamp), 'dd MMM HH:mm') : '—'}</td>
+                    <td className="py-3 px-3 capitalize font-bold text-slate-800 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-0.5 rounded-full text-[11px]">
+                        {ci.channel === 'chatbot' ? '🌸 Chatbot' : ci.channel}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-slate-800 font-medium max-w-sm">
+                      <p className="line-clamp-2" title={ci.raw_text || '—'}>
+                        {ci.raw_text || <span className="text-slate-400 italic">No text logged</span>}
+                      </p>
+                    </td>
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className={`font-bold ${ci.sentiment_score < -0.2 ? 'text-rose-600' : ci.sentiment_score > 0.2 ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {ci.sentiment_score?.toFixed(2) ?? '—'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-slate-700 capitalize font-medium whitespace-nowrap">{ci.emotion_label || '—'}</td>
+                    <td className="py-3 px-3 whitespace-nowrap"><DistressScore score={ci.distress_score ?? 0} /></td>
+                    <td className="py-3 px-3 text-slate-600 font-medium whitespace-nowrap">{ci.engagement_score != null ? `${(ci.engagement_score * 100).toFixed(0)}%` : '—'}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

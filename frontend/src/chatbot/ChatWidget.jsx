@@ -46,6 +46,11 @@ async function analyzeText(text, language) {
 
 async function storeCheckIn(victimId, analysis, turnText) {
   const token = localStorage.getItem('token');
+  const targetId = victimId || 'VIC-2024-GUEST';
+  const distress = analysis?.distress_score != null
+    ? analysis.distress_score
+    : (analysis?.threat_detected ? 85.0 : 50.0);
+
   const res = await fetch(`${BACKEND_URL}/check-ins`, {
     method: 'POST',
     headers: {
@@ -53,8 +58,9 @@ async function storeCheckIn(victimId, analysis, turnText) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({
-      victim_id: victimId,
+      victim_id: targetId,
       channel: 'chatbot',
+      raw_text: turnText,
       text_content: turnText,
       sentiment_score: analysis?.sentiment?.confidence
         ? (analysis.sentiment.label === 'positive' ? analysis.sentiment.confidence
@@ -62,8 +68,8 @@ async function storeCheckIn(victimId, analysis, turnText) {
           : 0)
         : 0,
       emotion_label: analysis?.emotions?.[0]?.label || 'neutral',
-      distress_score: analysis?.distress_score || (analysis?.threat_detected ? 85.0 : null),
-      engagement_score: 0.8,
+      distress_score: distress,
+      engagement_score: 0.85,
     }),
   });
   if (!res.ok) {
@@ -374,25 +380,64 @@ export default function ChatWidget({
     addBotMessages(CLOSING_MESSAGES[lang] || CLOSING_MESSAGES.en);
   };
 
+  const handleSelectCase = (id) => {
+    setLocalVictimId(id);
+    setIdConfirmed(true);
+  };
+
   // ── ID confirmation screen ─────────────────────────────────────────────
   if (!idConfirmed) {
     return (
       <div className={`flex flex-col bg-white ${embedded ? 'rounded-3xl border border-slate-100 shadow-sm' : 'h-dvh sm:h-[650px] sm:max-h-[85vh] rounded-none sm:rounded-3xl border border-slate-100 shadow-md'} overflow-hidden`}>
         <ChatHeader lang={lang} setLang={setLang} onClose={onClose} embedded={embedded} />
-        <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 gap-5 text-center bg-[#F8FAFC]">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-3xl shadow-xs">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 gap-4 text-center bg-[#F8FAFC] overflow-y-auto">
+          <div className="w-14 h-14 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-3xl shadow-xs">
             🌸
           </div>
           <div>
-            <h2 className="text-slate-900 font-extrabold text-xl tracking-tight">Talk with {BOT_NAME}</h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-sm">
-              Confidential check-in with your AI elder sister. Please enter your Case or Victim ID.
+            <h2 className="text-slate-900 font-extrabold text-lg sm:text-xl tracking-tight">Talk with {BOT_NAME}</h2>
+            <p className="text-slate-500 text-xs mt-1 max-w-sm font-medium">
+              Confidential AI elder sister support. Choose an active case or continue anonymously.
             </p>
-            <p className="text-emerald-800 text-xs font-semibold mt-1">अपना Case ID या Victim ID दर्ज करें।</p>
           </div>
-          <div className="w-full max-w-xs space-y-3">
+
+          <div className="w-full max-w-sm space-y-3">
+            <div className="flex flex-col gap-1.5 text-left">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Quick Case Selection</span>
+              <button
+                type="button"
+                onClick={() => handleSelectCase('VIC-2024-00483')}
+                className="w-full text-left px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 text-xs font-bold text-emerald-900 flex items-center justify-between transition cursor-pointer shadow-2xs"
+              >
+                <span>VIC-2024-00483 (Witness Protection)</span>
+                <span className="text-[10px] bg-emerald-200/60 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">Active Demo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectCase('VIC-2024-00102')}
+                className="w-full text-left px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center justify-between transition cursor-pointer shadow-2xs"
+              >
+                <span>VIC-2024-00102 (SC/ST Legal Aid)</span>
+                <span className="text-[10px] text-slate-500 font-medium">Patna</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectCase('VIC-2024-GUEST')}
+                className="w-full text-left px-3.5 py-2 rounded-2xl bg-purple-50 hover:bg-purple-100/70 border border-purple-200 text-xs font-bold text-purple-900 flex items-center justify-between transition cursor-pointer shadow-2xs"
+              >
+                <span>Continue as Guest (VIC-2024-GUEST)</span>
+                <span className="text-[10px] bg-purple-200/60 text-purple-800 px-2 py-0.5 rounded-full font-semibold">Anonymous</span>
+              </button>
+            </div>
+
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-slate-200"></div>
+              <span className="flex-shrink mx-2 text-[10px] text-slate-400 uppercase font-semibold">or custom ID</span>
+              <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
             <input
-              className="w-full bg-white border border-slate-200 text-slate-900 placeholder-slate-400 rounded-full px-5 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0F4C3A]/20 focus:border-[#0F4C3A] text-center tracking-widest uppercase shadow-2xs"
+              className="w-full bg-white border border-slate-200 text-slate-900 placeholder-slate-400 rounded-full px-4 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0F4C3A]/20 focus:border-[#0F4C3A] text-center tracking-widest uppercase shadow-2xs"
               placeholder="VIC-2024-XXXXX"
               value={localVictimId}
               onChange={(e) => { setLocalVictimId(e.target.value); setIdError(''); }}
@@ -401,11 +446,12 @@ export default function ChatWidget({
             {idError && <p className="text-rose-600 text-xs font-semibold">{idError}</p>}
             <button
               onClick={handleConfirmId}
-              className="w-full bg-[#0F4C3A] hover:bg-[#0A392B] text-white font-bold rounded-full py-3 text-xs sm:text-sm transition-all shadow-sm active:scale-98 cursor-pointer"
+              className="w-full bg-[#0F4C3A] hover:bg-[#0A392B] text-white font-bold rounded-full py-2.5 text-xs sm:text-sm transition-all shadow-sm active:scale-98 cursor-pointer"
             >
-              Begin Confidential Session
+              Begin Session
             </button>
           </div>
+
           <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>End-to-End Encrypted · Zero Clinical Jargon</span>

@@ -52,15 +52,32 @@ async def create_check_in(
     """
     Record a new check-in from Chatbot, IVRS, SMS, or Portal.
     
-    If raw text is provided without sentiment scores, the backend calls the
-    ML pipeline /analyze/text endpoint to extract sentiment and emotion in real time.
+    If victim ID is not found, it is automatically registered as a guest/active case
+    so all chatbot interactions appear seamlessly on the backend dashboard.
     """
-    victim = db.query(Victim).filter(Victim.id == check_in_in.victim_id).first()
+    raw_v_id = (check_in_in.victim_id or "").strip().upper()
+    if not raw_v_id or raw_v_id in ["GUEST", "ANONYMOUS", "PUBLIC", "DEFAULT"]:
+        raw_v_id = "VIC-2024-GUEST"
+
+    victim = db.query(Victim).filter(Victim.id == raw_v_id).first()
     if not victim:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Victim with ID '{check_in_in.victim_id}' does not exist",
+        # Automatically register incoming chatbot / new case
+        init_score = check_in_in.distress_score if check_in_in.distress_score is not None else 50.0
+        init_risk = "high" if init_score >= 70 else ("moderate" if init_score >= 40 else "low")
+        victim = Victim(
+            id=raw_v_id,
+            case_type="intimidation" if init_score >= 65 else "counselling_support",
+            assigned_district="Patna",
+            assigned_state="Bihar",
+            consent_flag=True,
+            current_distress_score=round(float(init_score), 1),
+            risk_level=init_risk,
+            current_trend="stable",
+            status="active",
         )
+        db.add(victim)
+        db.commit()
+        db.refresh(victim)
 
     # Check consent flag (opt-out honored at data collection layer)
     if not victim.consent_flag:
@@ -69,12 +86,13 @@ async def create_check_in(
             detail="Victim has opted out of monitoring data collection",
         )
 
+    text_to_analyze = check_in_in.raw_text or check_in_in.text_content
     sentiment = check_in_in.sentiment_score
     emotion = check_in_in.emotion_label
 
     # If raw text is provided and no explicit sentiment set, query ML pipeline
-    if check_in_in.raw_text and sentiment == 0.0 and emotion == "neutral":
-        nlp_res = await ml_client.analyze_text(check_in_in.raw_text)
+    if text_to_analyze and sentiment == 0.0 and emotion == "neutral":
+        nlp_res = await ml_client.analyze_text(text_to_analyze)
         sent_info = nlp_res.get("sentiment", {})
         sent_label = sent_info.get("label", "neutral")
         sent_conf = sent_info.get("confidence", 0.5)
@@ -91,18 +109,49 @@ async def create_check_in(
             emotion = emotions[0].get("label", "neutral")
 
     check_in = CheckIn(
-        victim_id=check_in_in.victim_id,
-        channel=check_in_in.channel,
+        victim_id=victim.id,
+        channel=check_in_in.channel or "chatbot",
         timestamp=check_in_in.timestamp or datetime.now(timezone.utc),
         sentiment_score=sentiment,
         emotion_label=emotion,
         distress_score=check_in_in.distress_score,
         engagement_score=check_in_in.engagement_score,
-        raw_text=check_in_in.raw_text,
+        raw_text=text_to_analyze,
     )
     db.add(check_in)
+
+    # Update victim metrics immediately on dashboard
+    if check_in_in.distress_score is not None:
+        new_score = round(float(check_in_in.distress_score), 1)
+        old_score = float(victim.current_distress_score or 50.0)
+        victim.current_distress_score = new_score
+        if new_score >= 80:
+            victim.risk_level = "critical"
+        elif new_score >= 65:
+            victim.risk_level = "high"
+        elif new_score >= 40:
+            victim.risk_level = "moderate"
+        else:
+            victim.risk_level = "low"
+
+        if new_score > old_score + 5:
+            victim.current_trend = "worsening"
+        elif new_score < old_score - 5:
+            victim.current_trend = "improving"
+        else:
+            victim.current_trend = "stable"
+
+    victim.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(check_in)
+
+    # Trigger ML alert evaluation if distress or risk indicators are elevated
+    if (check_in_in.distress_score and check_in_in.distress_score >= 65) or emotion in ["fear", "distress", "sadness", "anger"] or sentiment <= -0.3:
+        try:
+            from services.alert_evaluator import evaluate_victim_alerts
+            await evaluate_victim_alerts(db=db, victim_id=victim.id, evaluator_username="saheli_chatbot")
+        except Exception:
+            pass
 
     return check_in
 

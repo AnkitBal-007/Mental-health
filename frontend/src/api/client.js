@@ -102,6 +102,11 @@ export const fetchVictimById = (id) => request(`/victims/${id}`);
 export const fetchVictimCheckIns = (id, limit = 30) =>
   request(`/victims/${id}/check-ins?limit=${limit}`);
 
+export const fetchAllCheckIns = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/check-ins${qs ? `?${qs}` : ''}`);
+};
+
 export const fetchVictimRecommendations = (id) =>
   request(`/victims/${id}/recommendations`);
 

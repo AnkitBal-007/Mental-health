@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { fetchVictims, fetchDashboardSummary, createVictim } from '../api/client';
+import { fetchVictims, fetchDashboardSummary, createVictim, fetchAllCheckIns } from '../api/client';
 import { DistressScore, RiskBadge, TrendArrow, Spinner, EmptyState } from '../components/ui';
 import {
   ArrowUpRight, Plus, Video, Play, Pause, Square, Search,
   ChevronUp, ChevronDown, RefreshCw, Users, ShieldAlert,
   Calendar, CheckCircle2, Clock, Sparkles, Filter, ChevronRight,
-  X, Mic, MicOff, VideoOff, PhoneOff, UserPlus, Check
+  X, Mic, MicOff, VideoOff, PhoneOff, UserPlus, Check, MessageSquare
 } from 'lucide-react';
 
 const RISK_ORDER = { critical: 4, high: 3, moderate: 2, low: 1 };
@@ -18,6 +18,7 @@ export default function Dashboard() {
 
   const [victims, setVictims] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [recentCheckIns, setRecentCheckIns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -83,13 +84,18 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchVictims({ limit: 100 });
-      setVictims(data?.victims || data || []);
-
       const scope = user?.role === 'national' ? 'national' : user?.role === 'state' ? 'state' : 'district';
       const scopeId = user?.district || user?.state || 'national';
-      const sum = await fetchDashboardSummary(scope, scopeId);
+
+      const [data, sum, ciData] = await Promise.all([
+        fetchVictims({ limit: 100 }),
+        fetchDashboardSummary(scope, scopeId),
+        fetchAllCheckIns({ page_size: 8 }).catch(() => ({ items: [] })),
+      ]);
+
+      setVictims(data?.victims || data || []);
       setSummary(sum);
+      setRecentCheckIns(ciData?.items || []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -662,6 +668,86 @@ export default function Dashboard() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* ── Live Check-Ins & Chatbot Activity Feed ── */}
+      <div className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#0F4C3A] flex items-center justify-center font-bold text-sm">
+              🌸
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Live Chatbot & Interaction Feed</h3>
+              <p className="text-xs text-slate-400">Incoming check-ins and citizen transcripts across all channels</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/chatbot')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#0F4C3A] hover:bg-[#0A392B] text-white text-xs font-bold transition shadow-2xs active:scale-95 cursor-pointer"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Open Saheli Didi Chatbot</span>
+          </button>
+        </div>
+
+        <div className="mt-4">
+          {recentCheckIns.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs font-medium">
+              No recent interaction logs yet. Start chatting in Saheli Didi to see live check-in transcripts here.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {recentCheckIns.map((ci) => (
+                <div
+                  key={ci.id}
+                  onClick={() => navigate(`/victims/${ci.victim_id}`)}
+                  className="p-4 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/40 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer flex flex-col justify-between gap-2.5 group"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-900 group-hover:text-[#0F4C3A]">
+                        {ci.victim_id}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 font-semibold text-slate-600 capitalize">
+                        {ci.channel === 'chatbot' ? '🌸 Chatbot' : ci.channel}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {ci.timestamp ? new Date(ci.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-700 font-medium line-clamp-2 italic bg-white/80 p-2.5 rounded-xl border border-slate-100">
+                    "{ci.raw_text || 'Interaction completed'}"
+                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold capitalize px-2 py-0.5 rounded-md ${
+                        ci.emotion_label === 'fear' || ci.emotion_label === 'distress' || ci.emotion_label === 'sadness'
+                          ? 'bg-rose-100 text-rose-800'
+                          : ci.emotion_label === 'calm' || ci.emotion_label === 'positive'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-200/70 text-slate-700'
+                      }`}>
+                        {ci.emotion_label}
+                      </span>
+                      <span className={`font-bold ${
+                        ci.sentiment_score < -0.2 ? 'text-rose-600' : ci.sentiment_score > 0.2 ? 'text-emerald-700' : 'text-slate-500'
+                      }`}>
+                        Sentiment: {ci.sentiment_score?.toFixed(2)}
+                      </span>
+                    </div>
+                    <span className="text-xs font-extrabold text-slate-900">
+                      Distress: <span className={ci.distress_score >= 70 ? 'text-rose-600' : ci.distress_score >= 40 ? 'text-amber-600' : 'text-emerald-700'}>{ci.distress_score?.toFixed(0) || 50}</span>/100
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── MODAL 1: Add New Case Registration ── */}
