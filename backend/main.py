@@ -22,7 +22,7 @@ import models
 from config import HOST, PORT, ALLOWED_ORIGINS
 from database import engine, Base, SessionLocal
 from models.user import User
-from routers import auth, victims, check_ins, alerts, dashboard, admin
+from routers import auth, victims, check_ins, alerts, dashboard, admin, chat
 from seed_data import seed_database
 
 logging.basicConfig(
@@ -77,6 +77,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from routers import auth, victims, check_ins, alerts, dashboard, admin, chat
+
 # CORS — allow configured origins and all Vercel deployments
 app.add_middleware(
     CORSMiddleware,
@@ -94,6 +96,7 @@ app.include_router(check_ins.router)
 app.include_router(alerts.router)
 app.include_router(dashboard.router)
 app.include_router(admin.router)
+app.include_router(chat.router)
 
 
 @app.get("/", tags=["System"])

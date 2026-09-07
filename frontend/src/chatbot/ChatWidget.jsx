@@ -27,7 +27,7 @@ function detectLanguage(text) {
 
 async function analyzeText(text, language) {
   try {
-    const res = await fetch(`${ML_PIPELINE_URL}/analyze/text`, {
+    const res = await fetch(`${BACKEND_URL}/analyze/text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, language }),
@@ -35,7 +35,7 @@ async function analyzeText(text, language) {
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {
-    console.warn('ML pipeline offline or busy:', err);
+    console.warn('Text analyzer offline:', err);
     return null;
   }
 }
@@ -58,7 +58,7 @@ async function storeCheckIn(victimId, analysis, turnText) {
           : 0)
         : 0,
       emotion_label: analysis?.emotions?.[0]?.label || 'neutral',
-      distress_score: analysis?.distress_score || null,
+      distress_score: analysis?.distress_score || (analysis?.threat_detected ? 85.0 : null),
       engagement_score: 0.8,
     }),
   });
@@ -70,7 +70,7 @@ async function storeCheckIn(victimId, analysis, turnText) {
 }
 
 async function getAiChatResponse(message, history, language, sentiment, emotion) {
-  const res = await fetch(`${ML_PIPELINE_URL}/chat/respond`, {
+  const res = await fetch(`${BACKEND_URL}/chat/respond`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -313,9 +313,10 @@ export default function ChatWidget({
           emotionLabel
         );
         botReply = aiResult.reply;
-        isCrisis = !!aiResult.crisis_flag;
+        isCrisis = !!aiResult.crisis_flag || !!analysis?.threat_detected;
       } catch (aiErr) {
         console.warn('Gemini chat fallback engaged:', aiErr);
+        isCrisis = !!analysis?.threat_detected;
         const ackPool = ACKNOWLEDGEMENTS[
           sentimentLabel === 'positive' ? 'positive'
           : sentimentLabel === 'negative' ? 'negative'

@@ -10,7 +10,7 @@ from models.check_in import CheckIn
 from models.victim import Victim
 from models.user import User
 from schemas.check_in import CheckInCreate, CheckInResponse, CheckInListResponse
-from services.auth import get_current_user
+from services.auth import get_current_user, get_optional_current_user
 from services.ml_client import ml_client
 
 router = APIRouter(prefix="/check-ins", tags=["Check-ins"])
@@ -46,7 +46,7 @@ def list_all_check_ins(
 @router.post("", response_model=CheckInResponse, status_code=status.HTTP_201_CREATED)
 async def create_check_in(
     check_in_in: CheckInCreate,
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
