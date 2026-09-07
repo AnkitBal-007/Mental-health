@@ -92,8 +92,8 @@ export default function ChatPage() {
           <div className="lg:col-span-8 w-full">
             {done ? (
               <div className="text-center space-y-4 py-16 p-8 rounded-3xl bg-white border border-slate-100 shadow-md">
-                <div className="w-16 h-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-3xl mx-auto shadow-xs">
-                  🌿
+                <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-emerald-200 shadow-md mx-auto">
+                  <img src="/saheli_avatar.jpg" alt="Saheli Didi" className="w-full h-full object-cover" />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
                   Thank you for talking, take care

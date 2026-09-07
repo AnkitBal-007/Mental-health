@@ -102,9 +102,11 @@ function MessageBubble({ msg }) {
   return (
     <div className={`flex gap-2.5 sm:gap-3 mb-4 ${isBot ? 'justify-start' : 'justify-end'} animate-fade-in`}>
       {isBot && (
-        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-sm font-bold text-[#0F4C3A] flex-shrink-0 shadow-2xs mt-0.5">
-          🌸
-        </div>
+        <img
+          src="/saheli_avatar.jpg"
+          alt="Saheli Didi"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl object-cover border border-emerald-200 flex-shrink-0 shadow-2xs mt-0.5"
+        />
       )}
       <div className={`max-w-[85%] sm:max-w-[78%] flex flex-col gap-1 ${isBot ? 'items-start' : 'items-end'}`}>
         <div
@@ -153,9 +155,11 @@ function MessageBubble({ msg }) {
 function TypingDots() {
   return (
     <div className="flex gap-2.5 sm:gap-3 mb-4 justify-start animate-fade-in">
-      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-sm font-bold text-[#0F4C3A] flex-shrink-0 shadow-2xs mt-0.5">
-        🌸
-      </div>
+      <img
+        src="/saheli_avatar.jpg"
+        alt="Saheli Didi"
+        className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl object-cover border border-emerald-200 flex-shrink-0 shadow-2xs mt-0.5"
+      />
       <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl rounded-tl-sm px-4 py-3 flex gap-1.5 items-center shadow-xs">
         {[0, 1, 2].map((i) => (
           <div
@@ -189,6 +193,7 @@ export default function ChatWidget({
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const welcomeSentRef = useRef(false);
 
   // Quick suggestion chips for Mobile/PC
   const quickPrompts = {
@@ -231,16 +236,17 @@ export default function ChatWidget({
       ]);
       setTyping(false);
       addBotMessages(texts, startIndex + 1);
-    }, 700);
+    }, 600);
   }, []);
 
-  // Initialize welcome
+  // Initialize welcome once per session
   useEffect(() => {
-    if (idConfirmed && messages.length === 0) {
+    if (idConfirmed && !welcomeSentRef.current) {
+      welcomeSentRef.current = true;
       const msgs = WELCOME_MESSAGES[lang] || WELCOME_MESSAGES.en;
       addBotMessages(msgs);
     }
-  }, [idConfirmed, lang, messages.length, addBotMessages]);
+  }, [idConfirmed, lang, addBotMessages]);
 
   const handleConfirmId = () => {
     const trimmed = localVictimId.trim().toUpperCase();
@@ -391,8 +397,8 @@ export default function ChatWidget({
       <div className={`flex flex-col bg-white ${embedded ? 'rounded-3xl border border-slate-100 shadow-sm' : 'h-dvh sm:h-[650px] sm:max-h-[85vh] rounded-none sm:rounded-3xl border border-slate-100 shadow-md'} overflow-hidden`}>
         <ChatHeader lang={lang} setLang={setLang} onClose={onClose} embedded={embedded} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 gap-4 text-center bg-[#F8FAFC] overflow-y-auto">
-          <div className="w-14 h-14 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-3xl shadow-xs">
-            🌸
+          <div className="w-20 h-20 rounded-3xl overflow-hidden border-2 border-emerald-200 shadow-md flex-shrink-0">
+            <img src="/saheli_avatar.jpg" alt="Saheli Didi" className="w-full h-full object-cover" />
           </div>
           <div>
             <h2 className="text-slate-900 font-extrabold text-lg sm:text-xl tracking-tight">Talk with {BOT_NAME}</h2>
@@ -510,7 +516,9 @@ export default function ChatWidget({
         {sessionDone && (
           <div className="mt-6 text-center animate-fade-in">
             <div className="inline-flex flex-col items-center gap-3 bg-white border border-emerald-200 rounded-3xl px-6 py-5 max-w-sm mx-auto shadow-sm">
-              <span className="text-3xl">🌿</span>
+              <div className="w-16 h-16 rounded-3xl overflow-hidden border border-emerald-200 shadow-xs">
+                <img src="/saheli_avatar.jpg" alt="Saheli Didi" className="w-full h-full object-cover" />
+              </div>
               <div>
                 <p className="text-slate-900 text-sm font-extrabold">
                   {lang === 'hi' ? 'दीदी हमेशा आपके साथ हैं' : 'Didi is Always Here for You'}
@@ -601,19 +609,16 @@ function ChatHeader({ lang, setLang, onClose, embedded, victimId, onEndChat, ses
   return (
     <header className="px-4 sm:px-6 py-3.5 bg-white border-b border-slate-100 flex items-center justify-between flex-shrink-0 z-10">
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-base sm:text-lg shadow-2xs">
-            🌸
-          </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full ring-2 ring-white" />
+        <div className="relative flex-shrink-0">
+          <img
+            src="/saheli_avatar.jpg"
+            alt="Saheli Didi"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover border border-emerald-200 shadow-2xs"
+          />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full ring-2 ring-white" />
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-extrabold text-slate-900 tracking-tight">{BOT_NAME}</p>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              <Sparkles className="w-2.5 h-2.5" /> Gemini AI
-            </span>
-          </div>
+          <p className="text-sm font-extrabold text-slate-900 tracking-tight">{BOT_NAME}</p>
           <p className="text-[11px] text-slate-400 font-medium">
             {victimId ? `${victimId} · ` : ''}{lang === 'hi' ? 'आपकी अपनी सहेली दीदी · ऑनलाइन' : 'Your Caring Elder Sister · Online'}
           </p>

@@ -674,8 +674,8 @@ export default function Dashboard() {
       <div className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#0F4C3A] flex items-center justify-center font-bold text-sm">
-              🌸
+            <div className="w-9 h-9 rounded-2xl overflow-hidden border border-emerald-200 shadow-2xs flex-shrink-0">
+              <img src="/saheli_avatar.jpg" alt="Saheli Didi" className="w-full h-full object-cover" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">Live Chatbot & Interaction Feed</h3>
