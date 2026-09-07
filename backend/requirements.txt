@@ -1,0 +1,22 @@
+# Backend Case Management Service — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# --- Web Framework & Server ---
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic[email]>=2.5.0
+python-multipart>=0.0.6
+
+# --- Database & ORM ---
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+
+# --- Authentication & Security ---
+pyjwt>=2.8.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.1
+
+# --- HTTP Client for ML Pipeline Integration ---
+httpx>=0.25.0
+python-dotenv>=1.0.0

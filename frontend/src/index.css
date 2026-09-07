@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  }
+  body {
+    @apply bg-[#F4F6F8] text-slate-800 antialiased;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full hover:bg-slate-400;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white border border-slate-100 rounded-2xl shadow-sm;
+  }
+  .badge-critical {
+    @apply bg-rose-50 text-rose-600 border border-rose-200 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-high {
+    @apply bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-moderate {
+    @apply bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-low {
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .btn-primary {
+    @apply bg-[#0F4C3A] hover:bg-[#0A392B] text-white font-medium rounded-full px-4 py-2 text-sm transition-all shadow-sm active:scale-95 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-full px-4 py-2 text-sm border border-slate-200 transition-all shadow-sm active:scale-95;
+  }
+  .input {
+    @apply w-full bg-[#F8FAFC] border border-slate-200 text-slate-800 placeholder-slate-400 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F4C3A]/20 focus:border-[#0F4C3A] transition-all;
+  }
+}
+
+/* Diagonal stripe pattern for inactive chart bars */
+.stripe-pattern {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #e2e8f0,
+    #e2e8f0 4px,
+    #ffffff 4px,
+    #ffffff 8px
+  );
+}
+
+.stripe-pattern-dark {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.15) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}

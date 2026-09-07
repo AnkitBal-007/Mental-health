@@ -1,0 +1,189 @@
+{
+  "version": "1.0",
+  "description": "Rules-based mapping connecting victim case types, distress levels, and psychological factors to evidence-backed interventions.",
+  "compliance_disclaimer": "All interventions are advisory recommendations for counsellors and officials. No automated actions are executed without human verification.",
+  "rules": [
+    {
+      "id": "RULE_PROT_01",
+      "category": "protection",
+      "title": "Immediate Threat Assessment & Police Escort",
+      "description": "Deploy local Special Cell / Police Protection Unit to assess physical perimeter security and provide trial appearance escorts under the Witness Protection Scheme.",
+      "priority": "immediate",
+      "recommended_authority": "District Superintendent of Police / Witness Protection Cell",
+      "applicable_case_types": [
+        "intimidation",
+        "murder_witness",
+        "murder_threat",
+        "caste_based_violence",
+        "atrocity_act",
+        "rape",
+        "sexual_violence"
+      ],
+      "min_distress_score": 65.0,
+      "trigger_factors": [
+        "threat",
+        "fear",
+        "intimidation",
+        "declining",
+        "volatility"
+      ],
+      "base_score": 95
+    },
+    {
+      "id": "RULE_COUNS_01",
+      "category": "counselling",
+      "title": "Crisis Intervention & Emergency Trauma De-escalation",
+      "description": "Initiate an emergency tele-counselling or in-person trauma de-escalation session within 24 hours to stabilize acute panic and suicidal ideation risk.",
+      "priority": "immediate",
+      "recommended_authority": "District Mental Health Programme (DMHP) / Empanelled Clinical Psychologist",
+      "applicable_case_types": ["*"],
+      "min_distress_score": 70.0,
+      "trigger_factors": [
+        "distress",
+        "fear",
+        "anxiety",
+        "sadness",
+        "severity",
+        "volatility"
+      ],
+      "base_score": 90
+    },
+    {
+      "id": "RULE_RELOC_01",
+      "category": "relocation",
+      "title": "Safe House / Short-Stay Shelter Allocation",
+      "description": "Provide confidential temporary relocation to a secure government safe home, One Stop Centre (OSC), or institutional rehabilitation facility.",
+      "priority": "immediate",
+      "recommended_authority": "District Social Welfare Officer / One Stop Centre (OSC)",
+      "applicable_case_types": [
+        "rape",
+        "sexual_violence",
+        "gang_rape",
+        "murder_threat",
+        "caste_based_violence",
+        "arson",
+        "grievous_hurt"
+      ],
+      "min_distress_score": 75.0,
+      "trigger_factors": [
+        "fear",
+        "threat",
+        "intimidation",
+        "distress"
+      ],
+      "base_score": 85
+    },
+    {
+      "id": "RULE_MED_01",
+      "category": "medical",
+      "title": "Comprehensive Medical Referral & Psychiatric Evaluation",
+      "description": "Arrange priority clinical evaluation at the District Civil Hospital for trauma-induced somatic symptoms, sleep disturbance, physical injuries, or psychiatric medication review.",
+      "priority": "high",
+      "recommended_authority": "Chief Medical Officer (CMO) / District Civil Hospital",
+      "applicable_case_types": [
+        "rape",
+        "sexual_violence",
+        "grievous_hurt",
+        "caste_based_violence",
+        "atrocity_act"
+      ],
+      "min_distress_score": 60.0,
+      "trigger_factors": [
+        "distress",
+        "severity",
+        "volatility",
+        "sadness"
+      ],
+      "base_score": 80
+    },
+    {
+      "id": "RULE_FIN_01",
+      "category": "financial",
+      "title": "Interim Victim Compensation & Relief Disbursement",
+      "description": "Expedite release of mandatory 25-50% first-stage interim financial relief under the SC/ST (Prevention of Atrocities) Rules or State Victim Compensation Scheme.",
+      "priority": "high",
+      "recommended_authority": "District Magistrate / Sub-Divisional Officer (SDO)",
+      "applicable_case_types": [
+        "caste_based_violence",
+        "atrocity_act",
+        "rape",
+        "sexual_violence",
+        "grievous_hurt",
+        "arson"
+      ],
+      "min_distress_score": 40.0,
+      "trigger_factors": [
+        "engagement",
+        "distress",
+        "sentiment",
+        "severity"
+      ],
+      "base_score": 78
+    },
+    {
+      "id": "RULE_LEGAL_01",
+      "category": "legal_aid",
+      "title": "Pro Bono Legal Aid & Fast-Track Court Counsel",
+      "description": "Assign a designated DLSA retainer advocate to file witness protection petitions, review court summons, and represent the victim in fast-track trial proceedings.",
+      "priority": "high",
+      "recommended_authority": "District Legal Services Authority (DLSA)",
+      "applicable_case_types": [
+        "intimidation",
+        "murder_witness",
+        "caste_based_violence",
+        "atrocity_act",
+        "rape",
+        "sexual_violence"
+      ],
+      "min_distress_score": 45.0,
+      "trigger_factors": [
+        "threat",
+        "intimidation",
+        "sentiment",
+        "declining"
+      ],
+      "base_score": 75
+    },
+    {
+      "id": "RULE_COUNS_02",
+      "category": "counselling",
+      "title": "Weekly Structured Supportive Psychotherapy",
+      "description": "Schedule structured weekly counselling sessions focused on cognitive resilience, anxiety coping strategies, and trauma recovery stabilization.",
+      "priority": "high",
+      "recommended_authority": "Assigned Case Counsellor",
+      "applicable_case_types": ["*"],
+      "min_distress_score": 40.0,
+      "trigger_factors": [
+        "sentiment",
+        "sadness",
+        "anxiety",
+        "declining"
+      ],
+      "base_score": 70
+    },
+    {
+      "id": "RULE_LEGAL_02",
+      "category": "legal_aid",
+      "title": "Trial Hearing Notifications & Legal Progress Briefing",
+      "description": "Provide regular SMS/portal status briefings regarding charge-sheet progress, court appearance dates, and legal aid rights.",
+      "priority": "medium",
+      "recommended_authority": "DLSA Front Office / Help Desk",
+      "applicable_case_types": ["*"],
+      "min_distress_score": 20.0,
+      "trigger_factors": ["*"],
+      "base_score": 50
+    },
+    {
+      "id": "RULE_COUNS_03",
+      "category": "counselling",
+      "title": "Routine Multi-Channel Wellness Check-in",
+      "description": "Maintain regular bi-weekly automated check-ins via chatbot, SMS, or helpline IVRS with counsellor escalation triggered automatically on score shifts.",
+      "priority": "routine",
+      "recommended_authority": "Automated Monitoring System / Assigned Counsellor",
+      "applicable_case_types": ["*"],
+      "min_distress_score": 0.0,
+      "trigger_factors": ["*"],
+      "base_score": 40
+    }
+  ]
+}

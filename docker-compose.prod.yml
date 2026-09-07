@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # ─── 1. PostgreSQL Database Service ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mindguard_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Kept on internal network only (no host ports exposed)
+    networks:
+      - mindguard_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─── 2. ML Intelligence Pipeline Service ────────────────────────────────────
+  ml-pipeline:
+    build:
+      context: ./ml-pipeline
+      dockerfile: Dockerfile
+    container_name: mindguard_ml
+    restart: always
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8001
+      - PYTHONUNBUFFERED=1
+      - HUGGINGFACE_HUB_CACHE=/root/.cache/huggingface
+    volumes:
+      - ml_cache:/root/.cache/huggingface
+    # Kept on internal network only (no host ports exposed)
+    networks:
+      - mindguard_internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+  # ─── 3. Core FastAPI Backend Service ────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mindguard_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-pipeline:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      - ML_PIPELINE_URL=http://ml-pipeline:8001
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    # Kept on internal network only (no host ports exposed)
+    networks:
+      - mindguard_internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ─── 4. React Frontend SPA & Nginx Reverse Proxy ───────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_URL=/api
+        - VITE_ML_URL=/ml
+    container_name: mindguard_frontend
+    restart: always
+    depends_on:
+      - backend
+    # ONLY service with ports exposed publicly to the host / internet
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - mindguard_internal
+
+networks:
+  mindguard_internal:
+    name: mindguard_internal
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: mindguard_postgres_data
+  ml_cache:
+    name: mindguard_ml_cache
