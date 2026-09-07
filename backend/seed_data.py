@@ -73,6 +73,16 @@ def seed_database():
                 full_name="Dr. Priya Sharma (DMHP Clinical Counsellor)",
                 is_active=True,
             ),
+            User(
+                username="counsellor_anjali",
+                email="anjali.counsellor@dmhp.org",
+                hashed_password=hashed_pwd,
+                role="counsellor",
+                district="Patna",
+                state="Bihar",
+                full_name="Anjali Verma (District Counsellor)",
+                is_active=True,
+            ),
         ]
         db.add_all(users)
         db.commit()
