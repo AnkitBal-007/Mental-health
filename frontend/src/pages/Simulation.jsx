@@ -23,8 +23,10 @@ import {
 import { Play, Square, ChevronRight, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
 import { Spinner } from '../components/ui';
 
+import { BASE_URL } from '../api/client';
+
 const ML_URL = import.meta.env.VITE_ML_URL || 'http://localhost:8001';
-const API_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = BASE_URL;
 
 // ── Scenario scripts ────────────────────────────────────────────────────────
 const SCENARIOS = {

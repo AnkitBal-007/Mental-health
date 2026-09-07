@@ -15,8 +15,10 @@ import {
   X, RefreshCw, MessageSquare, AlertTriangle, Check, CheckCheck
 } from 'lucide-react';
 
+import { BASE_URL } from '../api/client';
+
 const ML_PIPELINE_URL = import.meta.env.VITE_ML_URL || 'http://localhost:8001';
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const BACKEND_URL = BASE_URL;
 
 // Detect likely language from text (Devanagari range)
 function detectLanguage(text) {

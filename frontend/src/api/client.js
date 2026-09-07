@@ -3,13 +3,17 @@
  * Attaches the JWT token from localStorage automatically.
  */
 
-// Reads configured backend URL or defaults to standard local dev
+const DEFAULT_PROD_BACKEND = 'https://sahayak-backend-lj39.onrender.com';
+
 const rawUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || '';
-export const BASE_URL = rawUrl ? rawUrl.replace(/\/+$/, '') : (
-  typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-    ? '' // In production if unset, fallback to relative or warn
-    : 'http://localhost:8000'
-);
+
+export const BASE_URL = (
+  rawUrl
+    ? rawUrl
+    : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8000'
+        : DEFAULT_PROD_BACKEND)
+).replace(/\/+$/, '');
 
 function getToken() {
   return localStorage.getItem('token');
@@ -23,18 +27,11 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  // Check for HTTPS mixed content warning
-  const effectiveBase = BASE_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:8000' : '');
-  
-  if (!effectiveBase && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    throw new Error('Backend URL is not configured. Please set VITE_BACKEND_URL in your Vercel project settings.');
-  }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for cold-start resilience
 
   try {
-    const res = await fetch(`${effectiveBase}${path}`, {
+    const res = await fetch(`${BASE_URL}${path}`, {
       ...options,
       headers,
       signal: controller.signal,
@@ -69,7 +66,7 @@ async function request(path, options = {}) {
       throw new Error('Connection timed out. If using free hosting (Render), the backend may take 30-50s to wake up from sleep. Please try again.');
     }
     if (err.message && err.message.includes('Failed to fetch')) {
-      throw new Error('Cannot connect to backend server. Please verify your Render backend is running and CORS is configured.');
+      throw new Error('Cannot connect to backend server. Please verify your Render backend is running.');
     }
     throw err;
   }
