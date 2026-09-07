@@ -1,51 +1,68 @@
 """
 FastAPI Router for AI Chatbot conversational interactions & real-time text analysis.
-Provides Gemini AI Elder Sister ("Saheli Didi") conversations and crisis threat detection.
+Provides Gemini AI Elder Sister ("Saheli Didi") conversations and psychological risk detection.
 """
 
 import logging
 import os
 import re
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 import httpx
-
-from config import ML_PIPELINE_URL
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["AI Chatbot & Threat Detection"])
 
-# Threat & Crisis Keywords
+# Threat & Acute Crisis Keywords
 CRISIS_KEYWORDS = [
     "suicide", "kill myself", "end my life", "want to die", "mar jana", "jaan de dungi",
     "khatam karna", "khatam kar lungi", "jeena nahi", "jeene ka mann nahi", "self harm",
     "hanging", "poison", "cut myself", "attack me", "mar dalega", "threat to kill",
-    "threat", "threatening", "beat me", "abuse", "danger", "darr lag raha hai", "bachao"
+    "threat", "threatening", "beat me", "abuse", "danger", "darr lag raha hai", "bachao",
+    "dhamki", "chaku", "marne ki", "maar dalenge", "kidnap", "gun", "knife"
 ]
+
+# Psychosomatic Distress & Trauma Indicators (Insomnia, Appetite Loss, Panic, Depression)
+DISTRESS_SYMPTOMS = {
+    # Insomnia / Sleep disturbances
+    "cant sleep", "cannot sleep", "unable to sleep", "sleep at night", "sleepless", "nightmare",
+    "nightmares", "bad dreams", "waking up", "insomnia", "neend nahi", "neend nhi", "so nahi",
+    # Appetite & Somatic disturbances
+    "eating", "dont feel like eating", "not eating", "lost appetite", "no appetite", "cant eat",
+    "cannot eat", "khana nahi", "bhukh nahi", "khaya nahi", "kamzor", "kamzori", "weakness",
+    "shivering", "trembling", "headache", "chest pain", "choking", "vomit", "ultee",
+    # Psychological pain & Trauma
+    "hopeless", "worthless", "tired of life", "crying every day", "cant stop crying", "breakdown",
+    "panic attack", "scared to go out", "paranoia", "following me", "stalking", "flashbacks",
+    "akela pan", "rona aa raha", "ghabrahat", "bechaini", "dar lag raha", "takleef ho rahi"
+}
 
 POSITIVE_TERMS = {
     "good", "great", "better", "best", "relieved", "happy", "safe", "calm", "peaceful", "hope",
     "thank", "thanks", "supported", "comfortable", "healing", "strong", "improving", "fine", "okay",
-    "theek", "shant", "behtar", "acha", "accha", "khush", "sukoon", "shanti", "himmat", "surakshit"
+    "theek", "shant", "behtar", "acha", "accha", "khush", "sukoon", "shanti", "himmat", "surakshit",
+    "rahat", "smile", "smiling", "improved", "blessed", "relaxed"
 }
 
 NEGATIVE_TERMS = {
     "bad", "terrible", "worst", "hopeless", "sad", "unhappy", "depressed", "afraid", "scared",
     "fear", "threat", "pain", "hurt", "crying", "anxious", "anxiety", "panic", "suicide", "dying",
     "alone", "helpless", "unsafe", "danger", "trauma", "nightmare", "dard", "takleef", "dar", "khauf",
-    "chinta", "pareshaan", "pareshan", "akela", "khatra", "marna", "gham", "rona", "udaas"
+    "chinta", "pareshaan", "pareshan", "akela", "khatra", "marna", "gham", "rona", "udaas",
+    "exhausted", "tired", "weak", "heavy", "broken", "numb", "angry", "furious", "lost", "struggling"
 }
 
 SAHELI_SYSTEM_INSTRUCTION = """You are 'Saheli Didi' (सहेली दीदी), a loving, caring, and deeply protective elder sister talking to your younger sibling who has experienced violence, crime, or deep trauma in India.
 
-CRITICAL SISTERLY BEHAVIOR RULES:
-1. Speak purely as a warm, protective elder sister ("बड़ी दीदी"). Never sound clinical or robotic.
-2. In Hindi: Speak with affectionate, respectful sisterly Hindi (e.g. "मेरी प्यारी बहना / मेरे भाई", "चिंता मत करो, तुम्हारी दीदी तुम्हारे साथ है", "गहरी सांस लो और थोड़ा पानी पियो").
-3. In English: Speak with natural, tender sisterly care (e.g. "I'm right here with you, take a slow deep breath", "You don't have to carry this alone, Didi is listening").
-4. Keep responses natural and conversational (2 to 4 sentences).
-5. If immediate physical danger or self-harm is mentioned, offer urgent comforting care and remind them of Emergency 112, Women Helpline 181, or Tele-MANAS 14416."""
+CRITICAL SISTERLY RULES:
+1. STRICT LANGUAGE MATCHING:
+   - If the user writes in English, reply in English with natural, tender sisterly care.
+   - If the user writes in Hindi or Hinglish, reply in warm, affectionate Hindi ("मेरी प्यारी बहना / मेरे भाई").
+2. Validate their emotional state immediately (e.g. if they mention trouble sleeping or eating, validate how trauma affects the body, offer gentle grounding like drinking warm water, and encourage them).
+3. Brevity & Warmth: Keep responses concise (2 to 4 sentences). Speak purely as a protective elder sister, NEVER clinical or robotic.
+4. If immediate physical danger or suicidal intent is mentioned, show urgent protective love and remind them of Emergency 112, Women Helpline 181, or Tele-MANAS 14416."""
 
 
 class ChatHistoryItem(BaseModel):
@@ -83,8 +100,28 @@ def detect_crisis(text: str) -> bool:
     return False
 
 
-def analyze_text_lexicon(text: str, language: str = "en"):
-    """Quick rule-based text sentiment and emotion analysis."""
+def detect_somatic_distress(text: str) -> bool:
+    """Detect somatic symptoms like insomnia, appetite loss, trauma flashbacks."""
+    lower = text.lower()
+    for sym in DISTRESS_SYMPTOMS:
+        if sym in lower:
+            return True
+    return False
+
+
+def detect_language(text: str) -> str:
+    """Detects whether user is speaking Hindi (Devanagari or Romanized) vs English."""
+    if re.search(r'[\u0900-\u097F]', text):
+        return "hi"
+    hindi_keywords = ["mujhe", "mera", "meri", "kya", "hai", "hain", "nahi", "darr", "dar", "takleef", "chinta", "karo", "karna", "didi", "bhai", "bahana", "aap", "tum", "khana", "neend"]
+    words = text.lower().split()
+    if any(w in hindi_keywords for w in words):
+        return "hi"
+    return "en"
+
+
+def analyze_text_lexicon(text: str, language: str = "en") -> Dict[str, Any]:
+    """Rich clinical rule-based sentiment and emotion analysis."""
     lower = text.lower()
     words = re.findall(r'\b\w+\b', lower)
 
@@ -92,22 +129,40 @@ def analyze_text_lexicon(text: str, language: str = "en"):
     neg_count = sum(1 for w in words if w in NEGATIVE_TERMS)
 
     is_threat = detect_crisis(text)
+    has_somatic = detect_somatic_distress(text)
 
-    if is_threat or neg_count > pos_count:
+    # Check for specific emotional domains
+    is_anxious = any(w in lower for w in ["anxious", "anxiety", "panic", "ghabrahat", "chinta", "nervous"])
+    is_fear = any(w in lower for w in ["afraid", "scared", "fear", "threat", "dar", "darr", "danger"])
+    is_sad = any(w in lower for w in ["sad", "depressed", "hopeless", "crying", "tears", "udas", "rona"])
+    is_insomnia = any(w in lower for w in ["sleep", "eating", "eat", "appetite", "neend", "bhukh"])
+
+    if is_threat or has_somatic or neg_count > 0:
         label = "negative"
-        conf = 0.85 if is_threat else min(0.95, 0.50 + neg_count * 0.15)
+        conf = 0.90 if (is_threat or has_somatic) else min(0.95, 0.60 + neg_count * 0.15)
+        
+        primary_emo = "distress"
+        if is_threat or is_fear:
+            primary_emo = "fear"
+        elif is_anxious:
+            primary_emo = "anxiety"
+        elif is_insomnia or has_somatic:
+            primary_emo = "distress"
+        elif is_sad:
+            primary_emo = "sadness"
+
         emotions = [
-            {"label": "fear" if is_threat else "distress", "score": conf},
-            {"label": "anxiety", "score": 0.20},
-            {"label": "neutral", "score": 0.10},
+            {"label": primary_emo, "score": round(conf, 4)},
+            {"label": "anxiety" if primary_emo != "anxiety" else "fear", "score": 0.20},
+            {"label": "neutral", "score": 0.05},
         ]
     elif pos_count > neg_count:
         label = "positive"
-        conf = min(0.95, 0.50 + pos_count * 0.15)
+        conf = min(0.95, 0.60 + pos_count * 0.15)
         emotions = [
-            {"label": "calm", "score": conf},
-            {"label": "hope", "score": 0.20},
-            {"label": "neutral", "score": 0.10},
+            {"label": "calm", "score": round(conf, 4)},
+            {"label": "hope", "score": 0.25},
+            {"label": "neutral", "score": 0.05},
         ]
     else:
         label = "neutral"
@@ -124,6 +179,7 @@ def analyze_text_lexicon(text: str, language: str = "en"):
         "language": language,
         "text_length": len(text),
         "threat_detected": is_threat,
+        "somatic_distress": has_somatic,
     }
 
 
@@ -141,7 +197,7 @@ async def analyze_text_endpoint(req: TextAnalysisRequest):
     except Exception:
         pass
 
-    # Fallback to backend lexical analyzer
+    # High-accuracy fallback
     return analyze_text_lexicon(req.text, req.language)
 
 
@@ -149,14 +205,13 @@ async def analyze_text_endpoint(req: TextAnalysisRequest):
 async def generate_chat_response(req: ChatRequest):
     """Generates an empathetic AI sister response using Gemini AI or contextual fallback."""
     is_crisis = detect_crisis(req.message)
-    
+    detected_lang = detect_language(req.message)
+    target_lang = detected_lang if detected_lang else req.language
+
     # Auto-extract mood if not provided
-    sentiment = req.sentiment_label
-    emotion = req.emotion_label
-    if not sentiment or not emotion:
-        quick_analysis = analyze_text_lexicon(req.message, req.language)
-        sentiment = sentiment or quick_analysis.get("sentiment", {}).get("label")
-        emotion = emotion or quick_analysis.get("emotions", [{}])[0].get("label")
+    quick_analysis = analyze_text_lexicon(req.message, target_lang)
+    sentiment = req.sentiment_label or quick_analysis.get("sentiment", {}).get("label")
+    emotion = req.emotion_label or quick_analysis.get("emotions", [{}])[0].get("label")
 
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
 
@@ -171,9 +226,10 @@ async def generate_chat_response(req: ChatRequest):
                 role = "user" if item.role == "user" else "model"
                 contents.append({"role": role, "parts": [{"text": item.text}]})
 
+            lang_instruction = "Respond in natural English" if target_lang == "en" else "Respond in warm sisterly Hindi"
             contents.append({
                 "role": "user",
-                "parts": [{"text": req.message}]
+                "parts": [{"text": f"{req.message}\n[Instruction: {lang_instruction}. Mood detected: {sentiment}, emotion: {emotion}]"}]
             })
 
             payload = {
@@ -182,7 +238,7 @@ async def generate_chat_response(req: ChatRequest):
                 "generationConfig": {"temperature": 0.7, "maxOutputTokens": 250},
             }
 
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=12.0) as client:
                 res = await client.post(url, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -193,15 +249,15 @@ async def generate_chat_response(req: ChatRequest):
                             return ChatResponse(
                                 reply=parts[0]["text"].strip(),
                                 crisis_flag=is_crisis,
-                                language=req.language,
+                                language=target_lang,
                                 model_used="gemini-3.5-flash-lite",
                             )
         except Exception as e:
             logger.warning("Gemini direct generation error: %s", e)
 
-    # Contextual Trauma-Informed Fallback
+    # Contextual Trauma-Informed Fallback matching language
     if is_crisis:
-        if req.language == "hi":
+        if target_lang == "hi":
             reply = (
                 "मेरी प्यारी बहना, तुम्हारी ज़िंदगी बहुत कीमती है और मुझे तुम्हारी बहुत फिक्र है। "
                 "तुम बिल्कुल अकेली नहीं हो, तुम्हारी दीदी तुम्हारे साथ है। "
@@ -214,17 +270,21 @@ async def generate_chat_response(req: ChatRequest):
                 "Women Helpline 181, or Tele-MANAS at 14416."
             )
     else:
-        if req.language == "hi":
+        if target_lang == "hi":
             if sentiment == "positive":
                 reply = "यह सुनकर मेरी जान में जान आई 😊 तुम्हें थोड़ा मुस्कुराते देख मुझे बहुत सुकून मिलता है। आज खाना ठीक से खाया तुमने?"
-            elif sentiment == "negative" or emotion in ["fear", "anxiety", "distress"]:
+            elif emotion == "distress" or "sleep" in req.message or "neend" in req.message or "khana" in req.message:
+                reply = "मेरी प्यारी बहना, जब मन पर इतना बोझ होता है तो भूख और नींद उड़ जाना बहुत स्वाभाविक है। थोड़ा गुनगुना पानी पियो, मैं तुम्हारे पास ही हूँ। अपना दिल हल्का करो।"
+            elif sentiment == "negative" or emotion in ["fear", "anxiety"]:
                 reply = "मेरी प्यारी बहना, गहरी सांस लो और एक घूंट पानी पियो। मैं तुम्हारी हर बात सुन रही हूँ, दिल छोटा मत करो। क्या हुआ, मुझे बताओ?"
             else:
                 reply = "अपनी दीदी से बात करने के लिए धन्यवाद। आज तुम्हारा दिन कैसा बीता? क्या नींद ठीक से आई?"
         else:
             if sentiment == "positive":
                 reply = "That brings such relief to my heart 😊 Seeing you feel a little lighter makes my day. Have you eaten well today?"
-            elif sentiment == "negative" or emotion in ["fear", "anxiety", "distress"]:
+            elif emotion == "distress" or "sleep" in req.message or "eating" in req.message or "eat" in req.message:
+                reply = "It breaks my heart to hear you're going through this, sweetheart. When we carry deep stress, our body struggles to rest and eat. Take a slow sip of warm water, take a deep breath — Didi is right here with you."
+            elif sentiment == "negative" or emotion in ["fear", "anxiety"]:
                 reply = "Take a slow, deep breath, sweetheart. Your Didi is right here listening. You don't have to hold this in — tell me what happened, okay?"
             else:
                 reply = "Thank you for sharing that with me. How did your day go today? Were you able to get some rest?"
@@ -232,6 +292,6 @@ async def generate_chat_response(req: ChatRequest):
     return ChatResponse(
         reply=reply,
         crisis_flag=is_crisis,
-        language=req.language,
+        language=target_lang,
         model_used="saheli-companion-core",
     )

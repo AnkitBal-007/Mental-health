@@ -20,9 +20,13 @@ import { BASE_URL } from '../api/client';
 const ML_PIPELINE_URL = import.meta.env.VITE_ML_URL || 'http://localhost:8001';
 const BACKEND_URL = BASE_URL;
 
-// Detect likely language from text (Devanagari range)
+// Detect likely language from text (Devanagari range or Hindi romanized keywords)
 function detectLanguage(text) {
-  return /[\u0900-\u097F]/.test(text) ? 'hi' : 'en';
+  if (/[\u0900-\u097F]/.test(text)) return 'hi';
+  const hindiKeywords = ['mujhe', 'mera', 'meri', 'kya', 'hai', 'hain', 'nahi', 'nhi', 'darr', 'dar', 'takleef', 'chinta', 'karo', 'karna', 'didi', 'bhai', 'bahana', 'aap', 'tum', 'khana', 'neend', 'bachao', 'marne'];
+  const words = text.toLowerCase().split(/\s+/);
+  if (words.some(w => hindiKeywords.includes(w))) return 'hi';
+  return 'en';
 }
 
 async function analyzeText(text, language) {
@@ -249,7 +253,7 @@ export default function ChatWidget({
     setInputText('');
 
     const detected = detectLanguage(text);
-    const effectiveLang = detected === 'hi' ? 'hi' : lang;
+    const effectiveLang = detected;
 
     const userMsgId = `user_${Date.now()}`;
     const userMsg = {
