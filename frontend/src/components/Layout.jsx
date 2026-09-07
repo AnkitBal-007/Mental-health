@@ -40,7 +40,7 @@ export default function Layout({ children }) {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight leading-none">Sahayak</h1>
+              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight leading-none">Saathi</h1>
               <p className="text-[10px] text-emerald-700 font-semibold tracking-wider uppercase mt-0.5">Victim Care & Alert</p>
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function Layout({ children }) {
 
                 <button
                   type="button"
-                  onClick={() => alert("National Atrocity Helpline: 14566\nEmergency SOS: 112\nSahayak Case Monitoring System Version 2.0")}
+                  onClick={() => alert("National Atrocity Helpline: 14566\nEmergency SOS: 112\nSaathi Case Monitoring System Version 2.0")}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-50/70 transition-all text-left"
                 >
                   <HelpCircle className="w-4 h-4 text-slate-400" />

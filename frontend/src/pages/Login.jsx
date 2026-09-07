@@ -54,7 +54,7 @@ export default function Login() {
               </svg>
             </div>
             <div className="text-left">
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none">Sahayak</h1>
+              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none">Saathi</h1>
               <p className="text-[11px] text-emerald-800 font-bold uppercase tracking-wider mt-0.5">Victim Distress Monitoring</p>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function Login() {
                   Authenticating…
                 </>
               ) : (
-                'Sign In to Sahayak'
+                'Sign In to Saathi'
               )}
             </button>
           </form>

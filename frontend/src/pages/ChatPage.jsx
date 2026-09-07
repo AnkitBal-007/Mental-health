@@ -28,7 +28,7 @@ export default function ChatPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Sahayak</h1>
+            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Saathi</h1>
             <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">Confidential Support Cell</p>
           </div>
         </div>
