@@ -1,9 +1,15 @@
 /**
- * API client for the backend at http://localhost:8000.
+ * API client for the Sahayak Backend.
  * Attaches the JWT token from localStorage automatically.
  */
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Reads configured backend URL or defaults to standard local dev
+const rawUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || '';
+export const BASE_URL = rawUrl ? rawUrl.replace(/\/+$/, '') : (
+  typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    ? '' // In production if unset, fallback to relative or warn
+    : 'http://localhost:8000'
+);
 
 function getToken() {
   return localStorage.getItem('token');
@@ -17,23 +23,56 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    return;
+  // Check for HTTPS mixed content warning
+  const effectiveBase = BASE_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:8000' : '');
+  
+  if (!effectiveBase && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    throw new Error('Backend URL is not configured. Please set VITE_BACKEND_URL in your Vercel project settings.');
   }
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `API error ${res.status}`);
-  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout (allows Render free tier cold-start wake up)
 
-  // 204 No Content
-  if (res.status === 204) return null;
-  return res.json();
+  try {
+    const res = await fetch(`${effectiveBase}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // If 401 on login, throw credentials error
+    if (res.status === 401) {
+      if (path.includes('/auth/login')) {
+        throw new Error('Incorrect username or password. Please verify credentials.');
+      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      throw new Error('Session expired. Please sign in again.');
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `API error ${res.status}`);
+    }
+
+    // 204 No Content
+    if (res.status === 204) return null;
+    return res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Connection timed out. If using free hosting (Render), the backend may take 30-50s to wake up from sleep. Please try again.');
+    }
+    if (err.message && err.message.includes('Failed to fetch')) {
+      throw new Error('Cannot connect to backend server. Please verify your Render backend is running and CORS is configured.');
+    }
+    throw err;
+  }
 }
 
 // Auth
@@ -47,7 +86,6 @@ export const login = (username, password) =>
 export const fetchVictims = async (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   const data = await request(`/victims${qs ? `?${qs}` : ''}`);
-  // Normalize: backend returns { total, items } — map current_trend → score_trend
   const victims = (data?.items || data?.victims || data || []).map((v) => ({
     ...v,
     score_trend: v.score_trend || v.current_trend,
@@ -70,7 +108,6 @@ export const fetchAlerts = async (params = {}) => {
   const data = await request(`/alerts${qs ? `?${qs}` : ''}`);
   const alerts = (data?.items || data?.alerts || data || []).map((a) => ({
     ...a,
-    // assigned_to can be a user ID integer — convert to string for display
     assigned_to: typeof a.assigned_to === 'number'
       ? `User #${a.assigned_to}`
       : a.assigned_to,

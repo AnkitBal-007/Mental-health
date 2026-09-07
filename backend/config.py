@@ -40,12 +40,21 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 
 
 # ── 3. CORS Allowed Origins ──────────────────────────────────────────────────
 # Reads comma-separated list of allowed origins from ALLOWED_ORIGINS (or CORS_ORIGINS).
-# Defaults to ["http://localhost:3000"] only when unset, preserving local development.
+# By default in cloud/local environments, allows localhost and any vercel preview/production domain.
 _origins_env = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS") or ""
+DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://saathiai-six.vercel.app",
+]
+
 if _origins_env.strip():
     ALLOWED_ORIGINS: List[str] = [origin.strip() for origin in _origins_env.split(",") if origin.strip()]
+    for d in DEFAULT_ORIGINS:
+        if d not in ALLOWED_ORIGINS:
+            ALLOWED_ORIGINS.append(d)
 else:
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: List[str] = DEFAULT_ORIGINS
 
 # ── 4. Temporary Admin Seed Token ────────────────────────────────────────────
 # Secret token required to trigger POST /admin/seed-demo-data
@@ -70,4 +79,3 @@ PORT: int = int(os.getenv("PORT") or os.getenv("BACKEND_PORT") or "8000")
 
 # Supported user roles
 USER_ROLES: List[str] = ["district", "state", "national", "counsellor"]
-
