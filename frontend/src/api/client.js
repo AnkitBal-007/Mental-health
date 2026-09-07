@@ -91,6 +91,12 @@ export const fetchVictims = async (params = {}) => {
   return { ...data, victims, total: data?.total ?? victims.length };
 };
 
+export const createVictim = (data) =>
+  request('/victims', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
 export const fetchVictimById = (id) => request(`/victims/${id}`);
 
 export const fetchVictimCheckIns = (id, limit = 30) =>
