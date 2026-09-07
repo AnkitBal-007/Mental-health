@@ -31,7 +31,7 @@ async function request(path, options = {}) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout (allows Render free tier cold-start wake up)
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for cold-start resilience
 
   try {
     const res = await fetch(`${effectiveBase}${path}`, {
