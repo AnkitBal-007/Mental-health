@@ -120,18 +120,38 @@ function MessageBubble({ msg }) {
           }}
         />
 
-        {/* Sentiment feedback badge */}
-        {msg.sentiment && (
-          <div className="flex items-center gap-1.5 mt-0.5 px-1">
-            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
-              msg.sentiment.label === 'positive'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : msg.sentiment.label === 'negative'
-                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                : 'bg-slate-50 text-slate-600 border-slate-200'
+        {/* Risk & Clinical Assessment Badge */}
+        {!isBot && (msg.risk_level || msg.sentiment) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 px-1 justify-end">
+            {/* Risk & Distress Score Pill */}
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${
+              msg.threat_detected || msg.risk_level === 'critical'
+                ? 'bg-rose-100 text-rose-800 border-rose-300 ring-1 ring-rose-400/30'
+                : msg.risk_level === 'high' || (msg.distress_score && msg.distress_score >= 65)
+                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                : msg.risk_level === 'moderate' || (msg.distress_score && msg.distress_score >= 40)
+                ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
             }`}>
-              {msg.emotion} · {msg.sentiment.label}
+              {msg.threat_detected || msg.risk_level === 'critical' ? '🚨 Critical Risk' :
+               msg.risk_level === 'high' ? '⚠ High Distress' :
+               msg.risk_level === 'moderate' ? '⚡ Moderate' : '✓ Low Risk'}
+              {msg.distress_score != null && ` (${msg.distress_score.toFixed(0)}/100)`}
             </span>
+
+            {/* Emotion / Mood */}
+            {msg.emotion && msg.emotion !== 'neutral' && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 capitalize">
+                {msg.emotion}
+              </span>
+            )}
+
+            {/* Specific Risk Factors */}
+            {msg.risk_factors && msg.risk_factors.length > 0 && msg.risk_factors.map((rf, idx) => (
+              <span key={idx} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                • {rf}
+              </span>
+            ))}
           </div>
         )}
         {msg.status === 'saving' && (
@@ -285,25 +305,41 @@ export default function ChatWidget({
       const sentimentLabel = analysis?.sentiment?.label || 'neutral';
       const emotionLabel = analysis?.emotions?.[0]?.label || 'neutral';
       const confidence = analysis?.sentiment?.confidence || 0.5;
+      const distressScore = analysis?.distress_score != null ? analysis.distress_score : (analysis?.threat_detected ? 88.0 : null);
+      const riskLevel = analysis?.risk_level || (distressScore >= 70 ? 'high' : (distressScore >= 40 ? 'moderate' : 'low'));
+      const riskFactors = analysis?.risk_factors || [];
+      const threatDetected = Boolean(analysis?.threat_detected);
+
+      if (threatDetected || distressScore >= 75) {
+        setShowCrisisBanner(true);
+      }
 
       setMessages((prev) =>
         prev.map((m) =>
           m.id === userMsgId
-            ? { ...m, sentiment: { label: sentimentLabel, confidence }, emotion: emotionLabel, status: 'saving' }
+            ? {
+                ...m,
+                sentiment: { label: sentimentLabel, confidence },
+                emotion: emotionLabel,
+                distress_score: distressScore,
+                risk_level: riskLevel,
+                risk_factors: riskFactors,
+                threat_detected: threatDetected,
+                status: 'saving',
+              }
             : m
         )
       );
 
       try {
-        if (localVictimId) {
-          await storeCheckIn(localVictimId, analysis, text);
-        }
+        const vId = localVictimId || 'VIC-2024-GUEST';
+        await storeCheckIn(vId, analysis, text);
       } catch (dbErr) {
-        console.warn('Check-in not linked to registered victim ID:', dbErr.message);
+        console.warn('Check-in storage note:', dbErr.message);
       }
 
       setMessages((prev) =>
-        prev.map((m) => m.id === userMsgId ? { ...m, status: 'saved' } : m)
+        prev.map((m) => (m.id === userMsgId ? { ...m, status: 'saved' } : m))
       );
 
       const nextTurn = turn + 1;

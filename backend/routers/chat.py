@@ -4,6 +4,7 @@ Provides Gemini AI Elder Sister ("Saheli Didi") conversations and psychological 
 """
 
 import logging
+import json
 import os
 import re
 from typing import List, Optional, Dict, Any
@@ -120,8 +121,76 @@ def detect_language(text: str) -> str:
     return "en"
 
 
+async def analyze_text_with_gemini(text: str, language: str = "en") -> Optional[Dict[str, Any]]:
+    """Use Gemini AI to extract distress score, risk level, threat detection, and risk factors."""
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not gemini_key or gemini_key.startswith("REPLACE_WITH"):
+        return None
+
+    prompt = (
+        "You are an expert clinical crisis & trauma evaluation AI in a victim protection system in India. "
+        "Analyze this citizen check-in message in English or Hindi:\n"
+        f'"{text}"\n\n'
+        "Evaluate psychological distress, risk level, acute danger/threats, and emotion accurately.\n"
+        "Return ONLY a valid JSON object matching this structure:\n"
+        "{\n"
+        '  "sentiment": "negative" | "positive" | "neutral",\n'
+        '  "confidence": float between 0.0 and 1.0,\n'
+        '  "emotion": "fear" | "anxiety" | "distress" | "sadness" | "anger" | "calm" | "hope" | "neutral",\n'
+        '  "distress_score": float between 0.0 and 100.0,\n'
+        '  "risk_level": "critical" | "high" | "moderate" | "low",\n'
+        '  "threat_detected": boolean,\n'
+        '  "risk_factors": ["string describing specific risk factor, e.g. Threat to Life, Witness Intimidation, Sleep Disturbance, Stalking, Appetite Loss, Acute Panic"]\n'
+        "}"
+    )
+
+    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]
+    for model in models_to_try:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1},
+            }
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                res = await client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts and "text" in parts[0]:
+                            parsed = json.loads(parts[0]["text"].strip())
+                            score = float(parsed.get("distress_score", 50.0))
+                            if score <= 1.0 and score > 0:
+                                score = score * 100.0
+
+                            sent_label = parsed.get("sentiment", "neutral")
+                            conf = float(parsed.get("confidence", 0.9))
+                            primary_emo = parsed.get("emotion", "neutral")
+                            is_threat = bool(parsed.get("threat_detected", False)) or detect_crisis(text)
+                            r_level = parsed.get("risk_level", "critical" if is_threat else ("high" if score >= 65 else ("moderate" if score >= 40 else "low")))
+                            r_factors = parsed.get("risk_factors", [])
+
+                            return {
+                                "sentiment": {"label": sent_label, "confidence": round(conf, 2)},
+                                "emotions": [{"label": primary_emo, "score": round(conf, 2)}],
+                                "distress_score": round(score, 1),
+                                "risk_level": r_level,
+                                "threat_detected": is_threat,
+                                "risk_factors": r_factors,
+                                "language": language,
+                                "text_length": len(text),
+                                "model_used": model,
+                            }
+        except Exception as e:
+            logger.warning("Gemini risk analysis error with %s: %s", model, e)
+            continue
+    return None
+
+
 def analyze_text_lexicon(text: str, language: str = "en") -> Dict[str, Any]:
-    """Rich clinical rule-based sentiment and emotion analysis."""
+    """Rich clinical rule-based sentiment, emotion, and risk factor detection."""
     lower = text.lower()
     words = re.findall(r'\b\w+\b', lower)
 
@@ -132,72 +201,83 @@ def analyze_text_lexicon(text: str, language: str = "en") -> Dict[str, Any]:
     has_somatic = detect_somatic_distress(text)
 
     # Check for specific emotional domains
-    is_anxious = any(w in lower for w in ["anxious", "anxiety", "panic", "ghabrahat", "chinta", "nervous"])
-    is_fear = any(w in lower for w in ["afraid", "scared", "fear", "threat", "dar", "darr", "danger"])
-    is_sad = any(w in lower for w in ["sad", "depressed", "hopeless", "crying", "tears", "udas", "rona"])
-    is_insomnia = any(w in lower for w in ["sleep", "eating", "eat", "appetite", "neend", "bhukh"])
+    is_anxious = any(w in lower for w in ["anxious", "anxiety", "panic", "ghabrahat", "chinta", "nervous", "bechaini"])
+    is_fear = any(w in lower for w in ["afraid", "scared", "fear", "threat", "dar", "darr", "danger", "khauf", "khatra"])
+    is_sad = any(w in lower for w in ["sad", "depressed", "hopeless", "crying", "tears", "udas", "rona", "dukhi"])
+    is_insomnia = any(w in lower for w in ["sleep", "sleepless", "nightmare", "eating", "eat", "appetite", "neend", "bhukh", "khana"])
 
-    if is_threat or has_somatic or neg_count > 0:
+    risk_factors = []
+    if is_threat:
+        risk_factors.append("Threat / Physical Danger")
+    if is_fear:
+        risk_factors.append("Acute Fear / Intimidation")
+    if is_anxious:
+        risk_factors.append("Severe Anxiety / Panic")
+    if is_insomnia:
+        risk_factors.append("Sleep / Appetite Disturbance")
+    if is_sad:
+        risk_factors.append("Psychological Trauma / Hopelessness")
+
+    if is_threat:
         label = "negative"
-        conf = 0.90 if (is_threat or has_somatic) else min(0.95, 0.60 + neg_count * 0.15)
-        
-        primary_emo = "distress"
-        if is_threat or is_fear:
-            primary_emo = "fear"
-        elif is_anxious:
-            primary_emo = "anxiety"
-        elif is_insomnia or has_somatic:
-            primary_emo = "distress"
-        elif is_sad:
-            primary_emo = "sadness"
-
-        emotions = [
-            {"label": primary_emo, "score": round(conf, 4)},
-            {"label": "anxiety" if primary_emo != "anxiety" else "fear", "score": 0.20},
-            {"label": "neutral", "score": 0.05},
-        ]
+        conf = 0.95
+        primary_emo = "fear"
+        distress_score = 90.0
+        risk_level = "critical"
+    elif is_fear or (is_anxious and has_somatic):
+        label = "negative"
+        conf = 0.90
+        primary_emo = "fear" if is_fear else "anxiety"
+        distress_score = 78.0
+        risk_level = "high"
+    elif is_anxious or is_sad or has_somatic or neg_count > 0:
+        label = "negative"
+        conf = min(0.95, 0.65 + neg_count * 0.10)
+        primary_emo = "anxiety" if is_anxious else ("sadness" if is_sad else "distress")
+        distress_score = min(72.0, 52.0 + neg_count * 8.0)
+        risk_level = "high" if distress_score >= 65 else "moderate"
     elif pos_count > neg_count:
         label = "positive"
-        conf = min(0.95, 0.60 + pos_count * 0.15)
-        emotions = [
-            {"label": "calm", "score": round(conf, 4)},
-            {"label": "hope", "score": 0.25},
-            {"label": "neutral", "score": 0.05},
-        ]
+        conf = min(0.95, 0.70 + pos_count * 0.10)
+        primary_emo = "calm"
+        distress_score = max(12.0, 32.0 - pos_count * 6.0)
+        risk_level = "low"
     else:
         label = "neutral"
-        conf = 0.55
-        emotions = [
-            {"label": "neutral", "score": 0.55},
-            {"label": "calm", "score": 0.25},
-            {"label": "anxiety", "score": 0.20},
-        ]
+        conf = 0.60
+        primary_emo = "neutral"
+        distress_score = 45.0
+        risk_level = "moderate"
+
+    emotions = [
+        {"label": primary_emo, "score": round(conf, 2)},
+        {"label": "anxiety" if primary_emo != "anxiety" else "fear", "score": 0.20},
+        {"label": "calm" if primary_emo != "calm" else "neutral", "score": 0.10},
+    ]
 
     return {
-        "sentiment": {"label": label, "confidence": round(conf, 4)},
+        "sentiment": {"label": label, "confidence": round(conf, 2)},
         "emotions": emotions,
+        "distress_score": round(distress_score, 1),
+        "risk_level": risk_level,
+        "risk_factors": risk_factors,
         "language": language,
         "text_length": len(text),
         "threat_detected": is_threat,
         "somatic_distress": has_somatic,
+        "model_used": "clinical-lexicon-v2",
     }
 
 
 @router.post("/analyze/text")
 async def analyze_text_endpoint(req: TextAnalysisRequest):
-    """Analyze sentiment, emotion, and threat indicators in text."""
-    # Attempt ML pipeline if accessible
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            res = await client.post(f"{ML_PIPELINE_URL}/analyze/text", json=req.model_dump())
-            if res.status_code == 200:
-                data = res.json()
-                data["threat_detected"] = detect_crisis(req.text)
-                return data
-    except Exception:
-        pass
+    """Analyze sentiment, emotion, distress score, and risk factors in real time."""
+    # 1. Try Gemini Clinical Crisis & Risk Factor Analysis
+    gemini_res = await analyze_text_with_gemini(req.text, req.language)
+    if gemini_res:
+        return gemini_res
 
-    # High-accuracy fallback
+    # 2. High-accuracy Lexicon Fallback
     return analyze_text_lexicon(req.text, req.language)
 
 
@@ -208,52 +288,63 @@ async def generate_chat_response(req: ChatRequest):
     detected_lang = detect_language(req.message)
     target_lang = detected_lang if detected_lang else req.language
 
-    # Auto-extract mood if not provided
-    quick_analysis = analyze_text_lexicon(req.message, target_lang)
+    # Auto-extract mood and risk factor
+    quick_analysis = await analyze_text_with_gemini(req.message, target_lang)
+    if not quick_analysis:
+        quick_analysis = analyze_text_lexicon(req.message, target_lang)
+
     sentiment = req.sentiment_label or quick_analysis.get("sentiment", {}).get("label")
     emotion = req.emotion_label or quick_analysis.get("emotions", [{}])[0].get("label")
+    risk_factors = quick_analysis.get("risk_factors", [])
+    risk_level = quick_analysis.get("risk_level", "low")
 
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
 
-    # If Gemini API Key is available, call Google Gemini
+    # If Gemini API Key is available, call Google Gemini with risk context
     if gemini_key and not gemini_key.startswith("REPLACE_WITH"):
-        try:
-            model = "gemini-3.5-flash-lite"
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+        models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]
+        for model in models_to_try:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
 
-            contents = []
-            for item in req.history[-6:]:
-                role = "user" if item.role == "user" else "model"
-                contents.append({"role": role, "parts": [{"text": item.text}]})
+                contents = []
+                for item in req.history[-6:]:
+                    role = "user" if item.role == "user" else "model"
+                    contents.append({"role": role, "parts": [{"text": item.text}]})
 
-            lang_instruction = "Respond in natural English" if target_lang == "en" else "Respond in warm sisterly Hindi"
-            contents.append({
-                "role": "user",
-                "parts": [{"text": f"{req.message}\n[Instruction: {lang_instruction}. Mood detected: {sentiment}, emotion: {emotion}]"}]
-            })
+                lang_instruction = "Respond in natural English" if target_lang == "en" else "Respond in warm sisterly Hindi"
+                context_str = f"Mood: {sentiment}, Emotion: {emotion}, Risk Level: {risk_level}"
+                if risk_factors:
+                    context_str += f", Risk Factors: {', '.join(risk_factors)}"
 
-            payload = {
-                "contents": contents,
-                "systemInstruction": {"parts": [{"text": SAHELI_SYSTEM_INSTRUCTION}]},
-                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 250},
-            }
+                contents.append({
+                    "role": "user",
+                    "parts": [{"text": f"{req.message}\n[Instruction: {lang_instruction}. Clinical Context: {context_str}]"}]
+                })
 
-            async with httpx.AsyncClient(timeout=12.0) as client:
-                res = await client.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return ChatResponse(
-                                reply=parts[0]["text"].strip(),
-                                crisis_flag=is_crisis,
-                                language=target_lang,
-                                model_used="gemini-3.5-flash-lite",
-                            )
-        except Exception as e:
-            logger.warning("Gemini direct generation error: %s", e)
+                payload = {
+                    "contents": contents,
+                    "systemInstruction": {"parts": [{"text": SAHELI_SYSTEM_INSTRUCTION}]},
+                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 250},
+                }
+
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return ChatResponse(
+                                    reply=parts[0]["text"].strip(),
+                                    crisis_flag=is_crisis or quick_analysis.get("threat_detected", False),
+                                    language=target_lang,
+                                    model_used=model,
+                                )
+            except Exception as e:
+                logger.warning("Gemini generation error with %s: %s", model, e)
+                continue
 
     # Contextual Trauma-Informed Fallback matching language
     if is_crisis:
