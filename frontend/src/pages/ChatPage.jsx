@@ -20,16 +20,12 @@ export default function ChatPage() {
       {/* ── Top Header Bar (Desktop & Tablet) ── */}
       <header className="hidden sm:flex h-16 bg-white border-b border-slate-100 items-center justify-between px-6 lg:px-12 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-2xs">
-            <svg className="w-5 h-5 text-[#0F4C3A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5" />
-              <circle cx="12" cy="12" r="2.5" fill="currentColor" />
-            </svg>
+          <div className="w-10 h-10 rounded-2xl overflow-hidden border border-emerald-200/80 shadow-2xs bg-white flex-shrink-0">
+            <img src="/logo.png" alt="Saathi Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Saathi</h1>
-            <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">Confidential Support Cell</p>
+            <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">Your Mind Matters</p>
           </div>
         </div>
 

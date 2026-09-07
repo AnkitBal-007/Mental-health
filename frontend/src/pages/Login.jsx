@@ -46,16 +46,12 @@ export default function Login() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200/90 flex items-center justify-center shadow-xs">
-              <svg className="w-7 h-7 text-[#0F4C3A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5" />
-                <circle cx="12" cy="12" r="2.5" fill="currentColor" />
-              </svg>
+            <div className="w-14 h-14 rounded-2xl overflow-hidden border border-emerald-200/90 shadow-xs bg-white flex-shrink-0">
+              <img src="/logo.png" alt="Saathi Logo" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none">Saathi</h1>
-              <p className="text-[11px] text-emerald-800 font-bold uppercase tracking-wider mt-0.5">Victim Distress Monitoring</p>
+              <p className="text-[11px] text-emerald-800 font-bold uppercase tracking-wider mt-1">Your Mind Matters</p>
             </div>
           </div>
           <p className="text-slate-500 text-sm font-medium">Empathetic case management & early warning platform</p>

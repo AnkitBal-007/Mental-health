@@ -30,18 +30,13 @@ export default function Layout({ children }) {
       <aside className="w-64 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col justify-between py-6 px-4 z-20">
         <div>
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 px-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center shadow-xs">
-              {/* Stylized Double Loop / Care Emblem */}
-              <svg className="w-6 h-6 text-[#0F4C3A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5" />
-                <circle cx="12" cy="12" r="2.5" fill="currentColor" />
-              </svg>
+          <div className="flex items-center gap-3 px-2 mb-8">
+            <div className="w-11 h-11 rounded-2xl overflow-hidden border border-emerald-200/80 shadow-xs flex-shrink-0 bg-white">
+              <img src="/logo.png" alt="Saathi Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-slate-900 tracking-tight leading-none">Saathi</h1>
-              <p className="text-[10px] text-emerald-700 font-semibold tracking-wider uppercase mt-0.5">Victim Care & Alert</p>
+              <p className="text-[10px] text-emerald-800 font-bold tracking-wider uppercase mt-1">Your Mind Matters</p>
             </div>
           </div>
 
